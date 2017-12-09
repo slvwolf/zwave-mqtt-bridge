@@ -1,0 +1,26 @@
+zwave:
+  # Path to openzwave configuration
+  # For OS X it is usually something like:
+  # /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/python_openzwave/ozw_config
+  # and for Debian something like:
+  # /usr/local/lib/python3.5/dist-packages/python_openzwave/ozw_config/
+  config: /usr/local/lib/python3.5/dist-packages/python_openzwave/ozw_config/
+  # Device for controlling ZWave devices, examples,
+  # OS X: /dev/cu.usbmodem1421
+  # Debian: /dev/ttyACM0
+  device: /dev/ttyACM0
+  # List of ignored labels
+mqtt:
+  host: 127.0.0.1
+  # Optional credentials
+  #  user:
+  #  password:
+bridge:
+  ignored:
+    - interval
+    - alarm level
+    - sourcenodeid
+    - alarm type
+    - power management
+    - system
+    - heat
