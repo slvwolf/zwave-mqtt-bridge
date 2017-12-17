@@ -27,6 +27,14 @@ class Bridge:
         self._actions = {}  # type: Dict[str, Action]
         self._log = logging.getLogger("zwbridge")
 
+    def set_config(self, node_id: int, config_id: int, data: str):
+        for i in self._nodes.values():
+            if i.id() == node_id:
+                i.set_config(int(config_id), data)
+
+    def nodes(self):
+        return self._nodes
+
     def _on_message(self, topic: str, data: str):
         action = self._actions.get(topic)
         if action:

@@ -1,0 +1,12 @@
+<html>
+    <body>
+        {% for node in nodes.values() %}
+            <h2>Node {{node.id()}} - {{node.name()}}</h2>
+            <p>{{ node.model() }}</p>
+            {% for i_k, i_v in node.zw_values().items() %}
+                <h5>{{ i_v.label }} ({{ i_k }}) = {{ i_v.data }}</h5>
+                <p>{{ i_v.help }} Type: {{ i_v.type }}</p>
+            {% endfor %}
+        {% endfor %}
+    </body>
+</html>

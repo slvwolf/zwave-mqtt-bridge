@@ -19,12 +19,32 @@ class ZwNode:
         self._mqtt = mqtt
         self._actions = {}  # type: Dict[str, SwitchAction]
         self._log = logging.getLogger("node")
-        self._spam_tick = (time.time(), 60)
+        self._spam_tick = (time.time(), 600)
         self._last_metrics = {}
         self._ignored_labels = ignored_labels
 
     def name(self):
         return self._zwn.name
+
+    def id(self):
+        return self._zwn.node_id
+
+    def model(self):
+        return self._zwn.product_name
+
+    def metrics(self):
+        return self._last_metrics
+
+    def zw_values(self):
+        return self._zwn.get_values()
+
+    def set_config(self, value_id, value):
+        try:
+            value = int(value)
+        except:
+            pass
+        self._zwn.set_config_param(int(value_id), value)
+        self._log.info("Setting %r = %r", value_id, value)
 
     @staticmethod
     def _format_label(label: str):

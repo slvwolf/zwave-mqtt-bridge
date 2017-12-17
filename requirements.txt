@@ -2,3 +2,5 @@ PyYAML==3.12
 python-openzwave
 paho-mqtt
 pydispatch
+apistar
+apistar[asyncio]
