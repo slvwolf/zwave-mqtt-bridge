@@ -15,6 +15,7 @@ from zwave_mqtt_bridge.zw_node import ZwNode
 
 DEBUG = True
 
+_log = logging.getLogger("bridge")
 
 class Bridge:
 
@@ -37,15 +38,17 @@ class Bridge:
 
     def _on_message(self, topic: str, data: str):
         action = self._actions.get(topic)
+        _log.debug("Received message: %r = %r", topic, data)
         if action:
             action.action(data)
 
     def register_all(self):
         self._last_config = time.time()
         for node in self._nodes.values():
-            self._actions.update(node.register_sensors())
-            self._actions.update(node.register_switches())
+            self._actions.update(node.register_rgbw())
             self._actions.update(node.register_dimmers())
+            self._actions.update(node.register_switches())
+            self._actions.update(node.register_sensors())
 
     def value_update(self, network: ZWaveNetwork, node: ZWaveNode, value: ZWaveValue):
         n = self._nodes.get(node.name)  # type: ZwNode

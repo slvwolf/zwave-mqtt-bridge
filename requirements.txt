@@ -1,6 +1,8 @@
 PyYAML==3.12
-python-openzwave
+python-openzwave==0.4.5
 paho-mqtt
 pydispatch
-apistar
+apistar==0.5.40
 apistar[asyncio]
+aiofiles
+uvicorn

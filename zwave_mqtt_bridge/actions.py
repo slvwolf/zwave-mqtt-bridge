@@ -19,7 +19,7 @@ class SwitchAction(Action):
         self._switch_id = switch_id
 
     def action(self, data: str):
-        toggle = data == b"ON"
+        toggle = data in [b"ON", b"True"]
         self._log.info("Switch Action: %s (%i) set to %r (raw: %s)", self._zwn.name, self._switch_id, toggle, data)
         self._zwn.set_switch(self._switch_id, toggle)
 
@@ -32,7 +32,7 @@ class DimmerAction(Action):
         self._switch_id = switch_id
 
     def action(self, data: str):
-        dimming = 99 if data == b"ON" else 0
+        dimming = 99 if data in [b"ON", b"True"] else 0
         self._log.info("Switch Action: %s (%i) set to %r (raw: %s)", self._zwn.name, self._switch_id, dimming, data)
         self._zwn.set_dimmer(self._switch_id, dimming)
 

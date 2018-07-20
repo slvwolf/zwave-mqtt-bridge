@@ -1,12 +1,44 @@
-<html>
-    <body>
-        {% for node in nodes.values() %}
-            <h2>Node {{node.id()}} - {{node.name()}}</h2>
-            <p>{{ node.model() }}</p>
-            {% for i_k, i_v in node.zw_values().items() %}
-                <h5>{{ i_v.label }} ({{ i_k }}) = {{ i_v.data }}</h5>
-                <p>{{ i_v.help }} Type: {{ i_v.type }}</p>
-            {% endfor %}
-        {% endfor %}
-    </body>
-</html>
+<!--<html>-->
+<!--<body>-->
+<!--{% for node in nodes.values() %}-->
+<!--<h2>Node {{node.id()}} - {{node.name()}}</h2>-->
+<!--<p>{{ node.model() }}</p>-->
+<!--{% for i_k, i_v in node.zw_values().items() %}-->
+<!--<h5>{{ i_v.label }} ({{ i_k }}) = {{ i_v.data }}</h5>-->
+<!--<p>{{ i_v.help }} Type: {{ i_v.type }}</p>-->
+<!--{% endfor %}-->
+<!--{% endfor %}-->
+<!--</body>-->
+<!--</html>-->
+
+{% include 'header.html' %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+            <h2 class="sub-header">Available Nodes</h2>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Model</th>
+                        <th>Topics</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for node in nodes.values() %}
+                    <tr>
+                        <td>{{node.id()}}</td>
+                        <td><a href="nodes/{{node.name()}}">{{node.name()}}</a></td>
+                        <td>{{ node.model() }}</td>
+                        <td>{{node.registration_state()}}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% include 'footer.html' %}

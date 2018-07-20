@@ -11,9 +11,17 @@ Note: Project is in prototype state so expect some rough edges
 
 Do the necessary changes to `config.yaml` and run,
 
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
     apistar run
+    
+Production run
 
-Service will open up status page on `http://127.0.0.1:8080`
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    uvicorn app:app --port 5000 --host 0.0.0.0
+
+Service will open up status page on `http://127.0.0.1:5000`
 
 ## Supported Devices
 

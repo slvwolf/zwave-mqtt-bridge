@@ -1,39 +1,63 @@
-from apistar import Include, Route, Component, render_template, annotate
-from apistar.frameworks.asyncio import ASyncIOApp as App
-from apistar.handlers import docs_urls, static_urls
-from apistar.renderers import HTMLRenderer
+import logging
 
-from main import ZWaveComponent, init_zwave_component
+from apistar import ASyncApp, Route, App, http
 
-settings = {
-    'TEMPLATES': {
-        'ROOT_DIR': 'templates',     # Include the 'templates/' directory.
-        'PACKAGE_DIRS': ['apistar']  # Include the built-in apistar templates.
-    }
-}
+from main import ZWaveComponent
+from zwave_mqtt_bridge.bridge import Bridge
+
+logging.basicConfig(level=logging.DEBUG)
+_log = logging.getLogger("main")
 
 
-@annotate(renderers=[HTMLRenderer()])
-def index(zw: ZWaveComponent):
-    nodes = zw.zw_service.nodes()
-    return render_template('index.html', nodes=nodes)
+def index(app: App, bridge: Bridge):
+    try:
+        nodes = bridge.nodes()
+        return app.render_template('index.html', nodes=nodes)
+    except Exception as e:
+        _log.warning("Could not show index", e)
 
 
-def set_config(zw: ZWaveComponent, node_id: int, value_id: int, value: str):
-    zw.zw_service.set_config(node_id, value_id, value)
+def route_node(app: App, bridge: Bridge, r_node: str):
+    try:
+        node = bridge.nodes().get(r_node)
+        if not node:
+            for n in bridge.nodes().values():
+                if str(n.id()) == r_node:
+                    node = n
+                    break
+        if not node:
+            return http.JSONResponse({"error": "not_found",
+                                      "requested_node": r_node,
+                                      "available_nodes": bridge.nodes().keys()},
+                                     status_code=404)
+        return app.render_template('node.html', node=node)
+    except Exception as e:
+        _log.warning("Could not show index", e)
+
+
+def set_config(bridge: Bridge, node_id: int, value_id: int, value: str):
+    bridge.set_config(node_id, value_id, value)
     return {"msg": "Setting done"}
+
+
+def push_configs(bridge: Bridge):
+    bridge.register_all()
+    return {"msg": "All nodes registered to HA"}
+
 
 routes = [
     Route('/', 'GET', index),
+    Route('/nodes/{r_node}', 'GET', route_node),
     Route('/nodes/{node_id}/config/{value_id}', 'PUT', set_config),
-    Include('/docs', docs_urls),
-    Include('/static', static_urls)
+    Route('/ha/register', 'POST', push_configs),
 ]
 
-app = App(routes=routes,
-          settings=settings,
-          components=[Component(ZWaveComponent, init_zwave_component)])
+_log.info("Creating application")
+app = ASyncApp(routes=routes,
+               components=[ZWaveComponent()],
+               template_dir="templates",
+               static_dir="static")
 
 if __name__ == '__main__':
-    app.main()
-
+    _log.info("Starting app")
+    app.serve('0.0.0.0', 5000, debug=False)

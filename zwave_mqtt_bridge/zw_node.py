@@ -1,12 +1,13 @@
 import time
 import logging
-from typing import Dict, List
+from typing import Dict, List, Union
 
+import yaml
 from openzwave.node import ZWaveNode
 from openzwave.value import ZWaveValue
 
 from zwave_mqtt_bridge.command_classes import COMMAND_CLASS_NOTIFICATION
-from zwave_mqtt_bridge.hass_mqtt import HassMqtt
+from zwave_mqtt_bridge.hass_mqtt import HassMqtt, HassRgbLight, HassCommand, HassDimmer, HassSensor
 from zwave_mqtt_bridge.actions import DimmerAction, RgbAction, BrightnessAction, SwitchAction, Action
 
 
@@ -22,6 +23,9 @@ class ZwNode:
         self._spam_tick = (time.time(), 600)
         self._last_metrics = {}
         self._ignored_labels = ignored_labels
+        self._cmds = dict()   # type: Dict[str, Union[HassCommand, HassDimmer, HassRgbLight, HassSensor]]
+        self._topics = dict()  # type: Dict[str, Action]
+        self._config = dict()  # type: Dict[str, str]
 
     def name(self):
         return self._zwn.name
@@ -32,11 +36,31 @@ class ZwNode:
     def model(self):
         return self._zwn.product_name
 
-    def metrics(self):
+    def metrics(self) -> Dict:
         return self._last_metrics
+
+    def config_template(self) -> Dict[str, List]:
+        full_set = dict()
+        for cmd in self._cmds.values():
+            config = cmd.generate_config()
+            for key in config.keys():
+                if key not in full_set:
+                    full_set[key] = []
+                full_set[key].extend(config[key])
+        return yaml.dump(full_set, default_flow_style=False).replace("\n", "<br>").replace(" ", "&nbsp;")
 
     def zw_values(self):
         return self._zwn.get_values()
+
+    def topics(self) -> Dict[str, Action]:
+        return self._topics
+
+    def registration_state(self) -> str:
+        if len(self._topics) > 0:
+            return "Topics Active"
+        if self._cmds.get("metrics"):
+            return "Sensor Active"
+        return "-"
 
     def set_config(self, value_id, value):
         try:
@@ -98,20 +122,6 @@ class ZwNode:
             return True
         return False
 
-    def register_sensors(self) -> Dict[str, Action]:
-        """
-        Registers normal sensors and notification classes as well
-        """
-        for s_id in self._zwn.get_sensors():
-            v = self._zwn.values[s_id]  # type: ZWaveValue
-            self._mqtt.send_sensor_config(self._zwn.name, "sensor", self._get_true_label(v), v.units)
-            self._log.info("Sensor %s / %s", self._zwn.name, self._get_true_label(v))
-        for s_id in self._zwn.get_values_for_command_class(COMMAND_CLASS_NOTIFICATION):
-            v = self._zwn.values[s_id]  # type: ZWaveValue
-            self._mqtt.send_sensor_config(self._zwn.name, "sensor", self._get_true_label(v), v.units)
-            self._log.info("Sensor (Notification) %s / %s", self._zwn.name, self._get_true_label(v))
-        return {}
-
     def send_sensor_data(self) -> bool:
         """
         Send all sensor data, return true if something was relayed forward
@@ -128,59 +138,80 @@ class ZwNode:
             # Include notification class data
         return self._mqtt_metrics_send("sensor", metrics)
 
-    def _mqtt_metrics_send(self, mtype: str, metrics: dict, state="state") -> bool:
+    def _mqtt_metrics_send(self, mtype: str, metrics: dict) -> bool:
         for label in self._ignored_labels:
             if label in metrics:
                 del metrics[label]
         if self._should_send_metrics(mtype, metrics):
             self._log.info("Sending %s %s data", self._zwn.name, mtype)
-            self._mqtt.send_metrics(mtype, self._zwn.name, metrics, state=state)
+            self._mqtt.send_metrics(self._cmds.get("metrics"), metrics)
             return True
         return False
 
     def send_switch_data(self):
-        metrics = {self._get_true_label(self._zwn.values[s_id]):
-                   "OFF" if self._zwn.get_switch_state(s_id) == 0 else "ON"
-                   for s_id in self._zwn.get_switches()}
-        return self._mqtt_metrics_send("switch", metrics)
+        for s_id in self._zwn.get_switches():
+            if s_id in self._cmds:
+                self._mqtt.send_switch_state(self._cmds.get(s_id), self._zwn.get_switch_state(s_id))
 
     def send_dimmer_data(self):
-        metrics = {self._get_true_label(self._zwn.values[s_id]):
-                   "OFF" if self._zwn.get_dimmer_level(s_id) == 0 else "ON"
-                   for s_id in self._zwn.get_dimmers()}
-        return self._mqtt_metrics_send("light", metrics)
+        for s_id in self._zwn.get_dimmers():
+            if s_id in self._cmds:
+                self._mqtt.send_dimmer_state(self._cmds.get(s_id), self._zwn.get_dimmer_level(s_id))
 
     def send_rgb_data(self):
         metrics = {self._get_true_label(self._zwn.values[s_id]):
                    self._zwn.get_rgbw(s_id)
                    for s_id in self._zwn.get_rgbbulbs()}
-        return self._mqtt_metrics_send("light", metrics, state="rgb/state")
+        return self._mqtt_metrics_send(self._topic.rgb, metrics)
+
+    def register_sensors(self) -> Dict[str, Action]:
+        """
+        Registers normal sensors and notification classes as well
+        """
+        cmd = self._mqtt.register_metrics(self._zwn.location, self._zwn.name)
+        self._cmds["metrics"] = cmd
+        for s_id in self._zwn.get_sensors():
+            v = self._zwn.values[s_id]  # type: ZWaveValue
+            cmd.add_metric(self._get_true_label(v))
+            self._log.info("Sensor %s / %s", self._zwn.name, self._get_true_label(v))
+        for s_id in self._zwn.get_values_for_command_class(COMMAND_CLASS_NOTIFICATION):
+            v = self._zwn.values[s_id]  # type: ZWaveValue
+            cmd.add_metric(self._get_true_label(v))
+            self._log.info("Sensor (Notification) %s / %s", self._zwn.name, self._get_true_label(v))
+        return {}
 
     def register_switches(self) -> Dict[str, Action]:
         topics = {}
         for s_id in self._zwn.get_switches():
+            if s_id in self._cmds:
+                continue
             v = self._zwn.values[s_id]  # type: ZWaveValue
-            topic = self._mqtt.send_switch_config(self._zwn.name, self._get_true_label(v))
-            topics[topic] = SwitchAction(self._zwn, v.value_id)
+            cmd = self._mqtt.send_switch_config(self._zwn.location, self._zwn.name, self._get_true_label(v))
+            self._cmds[s_id] = cmd
+            topics[cmd.command] = SwitchAction(self._zwn, v.value_id)
             self._log.info("Switch %s / %s", self._zwn.name, self._get_true_label(v))
         return topics
 
     def register_dimmers(self) -> Dict[str, Action]:
-        topics = {}
         for s_id in self._zwn.get_dimmers():
+            if s_id in self._cmds:
+                continue
             v = self._zwn.values[s_id]  # type: ZWaveValue
-            topic = self._mqtt.send_light_config(self._zwn.name, self._get_true_label(v))
-            topics[topic] = DimmerAction(self._zwn, v.value_id)
+            cmd = self._mqtt.send_light_config(self._zwn.location, self._zwn.name, self._get_true_label(v))
+            self._cmds[s_id] = cmd
+            self._topics[cmd.command] = DimmerAction(self._zwn, v.value_id)
             self._log.info("Light %s / %s", self._zwn.name, self._get_true_label(v))
-        return topics
+        return self._topics
 
     def register_rgbw(self) -> Dict[str, Action]:
-        topics = {}
         for s_id in self._zwn.get_rgbbulbs():
+            if s_id in self._cmds:
+                continue
             v = self._zwn.values[s_id]  # type: ZWaveValue
-            topic, rgb_topic, b_topic = self._mqtt.send_rgb_light_config(self._zwn.name, self._get_true_label(v))
-            topics[topic] = DimmerAction(self._zwn, v.value_id)
-            topics[rgb_topic] = RgbAction(self._zwn, v.value_id)
-            topics[b_topic] = BrightnessAction(self._zwn, v.value_id)
+            cmd = self._mqtt.send_rgb_light_config(self._zwn.location, self._zwn.name, self._get_true_label(v))
+            self._cmds[s_id] = cmd
+            self._topics[cmd.brightness] = DimmerAction(self._zwn, v.value_id)
+            self._topics[cmd.rgb] = RgbAction(self._zwn, v.value_id)
+            self._topics[cmd.brightness] = BrightnessAction(self._zwn, v.value_id)
             self._log.info("RGBLight %s / %s", self._zwn.name, self._get_true_label(v))
-        return topics
+        return self._topics

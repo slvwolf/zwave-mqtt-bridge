@@ -3,6 +3,7 @@ import logging
 import yaml
 import sys
 
+from apistar import Component
 from openzwave.network import ZWaveNetwork
 from openzwave.option import ZWaveOption
 from pydispatch import dispatcher
@@ -11,16 +12,19 @@ from zwave_mqtt_bridge.bridge import Bridge
 from zwave_mqtt_bridge.hass_mqtt import HassMqtt
 
 
-DEBUG = True
 FORMAT = '%(asctime)-15s %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT)
+logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 LOG = logging.getLogger("bridge")
 
 
-class ZWaveComponent(object):
+class ZWaveComponent(Component):
     preload = True
 
+    def resolve(self) -> Bridge:
+        return self.zw_service
+
     def __init__(self):
+        Component.__init__(self)
         config_file = "config.yaml"
         data = yaml.load(open(config_file))
         config_path = data.get("zwave", {}).get("config")
@@ -71,7 +75,6 @@ class ZWaveComponent(object):
                     LOG.info("Network is ready")
                     break
                 else:
-
                     time.sleep(1.0)
                     LOG.info("Waiting.. (%i s)", i)
             LOG.info("Starting run..")
