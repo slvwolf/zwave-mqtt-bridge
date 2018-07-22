@@ -1,11 +1,11 @@
-from typing import Dict
+from typing import Dict, List
 
 import paho.mqtt.client as mqtt
 import json
 import logging
 
 log = logging.getLogger("hass_mqtt")
-log.setLevel(logging.DEBUG)
+
 
 class HassBase:
 
@@ -36,10 +36,17 @@ class HassCommand(HassBase):
         self.command = location + "/" + device_type + "/" + name + "/" + second_name + "/set"
         self.status = location + "/" + device_type + "/" + name + "/" + second_name + "/status"
         self._second_name = second_name
+        self._last_status_payload = None
 
     def register_all(self, mqttc: mqtt.Client):
         log.info("Subscribing to: " + self.command)
         mqttc.subscribe(self.command)
+
+    def should_status_send(self, data) -> bool:
+        if data == self._last_status_payload:
+            return False
+        self._last_status_payload = data
+        return True
 
     def generate_config(self):
         data = HassBase.generate_config(self)
@@ -60,17 +67,12 @@ class HassCommand(HassBase):
 class HassDimmer(HassCommand):
 
     def __init__(self, domain: str, name: str, light_name: str):
-        HassCommand.__init__(self, domain, "light", name, light_name)
-        self.brightness = domain + "/light/" + name + "/" + light_name + "/brightness/set"
-        self.status_brightness = domain + "/light/" + name + "/" + light_name + "/brightness/status"
+        HassCommand.__init__(self, domain, "light", name, light_name, "mqtt_json")
 
     def generate_config(self):
         data = HassCommand.generate_config(self)
         v = data[self._device_type][0]
-        v["brightness_value_template"] = "{{ value_json.brightness }}"
-        v["brightness_state_topic"] = self.status_brightness
-        v["brightness_command_topic"] = self.brightness
-        v["state_value_template"] = "{{ value_json.state }}"
+        v["brightness"] = True
         return data
 
     def __repr__(self):
@@ -81,22 +83,12 @@ class HassRgbLight(HassDimmer):
 
     def __init__(self, domain: str, name: str, light_name: str):
         HassDimmer.__init__(self, domain, name, light_name)
-        self.rgb = domain + "/light/" + name + "/" + light_name + "/rgb/set"
-        self.status_rgb = domain + "/light/" + name + "/" + light_name + "/rgb/status"
-
-    def register_all(self, mqttc: mqtt.Client):
-        HassDimmer.register_all(self, mqttc)
-        log.info("Subscribing to: " + self.rgb)
-        mqttc.subscribe(self.rgb)
-        log.info("Subscribing to: " + self.brightness)
-        mqttc.subscribe(self.brightness)
 
     def generate_config(self):
         data = HassDimmer.generate_config(self)
         v = data[self._device_type][0]
-        v["rgb_state_topic"] = self.status_rgb
-        v["rgb_command_topic"] = self.rgb
-        v["rgb_value_template"] = "{{ value_json.rgb | join(',') }}"
+        v["rgb"] = True
+        v["white_value"] = True
         return data
 
     def __repr__(self):
@@ -106,7 +98,7 @@ class HassRgbLight(HassDimmer):
 class HassSensor(HassBase):
 
     def __init__(self, location: str, name: str):
-        HassBase.__init__(self, location, "sensor", name)
+        HassBase.__init__(self, location, "sensor", name, "mqtt")
         self._metrics = set()
         self.status_metric = "/".join([self._domain, self._device_type, name, "sensor"])
 
@@ -155,19 +147,19 @@ class HassMqtt:
         topic = HassSensor(location, name)
         return topic
 
-    def send_switch_config(self, location: str, name: str, switch_name: str):
+    def register_switch(self, location: str, name: str, switch_name: str):
         log.info("Setting up switch: %r / %r" % (name, switch_name))
         topic = HassCommand(location, "switch", name, switch_name)
         topic.register_all(self._mqttc)
         return topic
 
-    def send_light_config(self, location: str, name: str, light_name: str) -> HassDimmer:
+    def register_light(self, location: str, name: str, light_name: str) -> HassDimmer:
         log.info("Setting up light: %r / %r" % (name, light_name))
         topic = HassDimmer(location, name, light_name)
         topic.register_all(self._mqttc)
         return topic
 
-    def send_rgb_light_config(self, location: str, name: str, light_name: str) -> HassRgbLight:
+    def register_rgb_light(self, location: str, name: str, light_name: str) -> HassRgbLight:
         log.info("Setting up RGB light: %r / %r" % (name, light_name))
         topic = HassRgbLight(location, name, light_name)
         topic.register_all(self._mqttc)
@@ -177,11 +169,44 @@ class HassMqtt:
         if cmd and metric_map:
             self._mqttc.publish(cmd.status_metric, payload=json.dumps(metric_map), retain=True)
 
-    def send_dimmer_state(self, cmd: HassDimmer, brightness: int):
-        log.info("Sending dimmer state: %r = %r", cmd, brightness)
-        data = "OFF" if brightness == 0 else "ON"
-        self._mqttc.publish(cmd.status, json.dumps({"state": data}), retain=True)
-        self._mqttc.publish(cmd.status_brightness, json.dumps({"brightness": brightness}), retain=True)
+    def send_light_state(self, cmd: HassDimmer, brightness: int=None, color: List[int]=None):
+        """
+        Example message for mqtt_json lights
+            {
+              "brightness": 255,
+              "color_temp": 155,
+              "color": {
+                "r": 255,
+                "g": 180,
+                "b": 200,
+                "x": 0.406,
+                "y": 0.301,
+                "h": 344.0,
+                "s": 29.412
+              },
+              "effect": "colorloop",
+              "state": "ON",
+              "transition": 2,
+              "white_value": 150
+            }
+        :param cmd: Command
+        :param brightness: Brightness level
+        :param color: RGB(W) color, if available
+        """
+        if brightness is None:
+            brightness = color[3] if color else 255
+        data = {"state": "OFF" if brightness == 0 else "ON",
+                "brightness": brightness}
+        if color:
+            data["color"] = {
+                "r": color[0],
+                "g": color[1],
+                "b": color[2]
+            }
+            if len(color) == 4:
+                data["white_value"] = color[3]
+        log.info("Sending light state: %r = %r", cmd, data)
+        self._mqttc.publish(cmd.status, json.dumps(data), retain=True)
 
     def send_switch_state(self, cmd: HassDimmer, state: bool):
         log.info("Sending switch state: %r = %r", cmd, state)

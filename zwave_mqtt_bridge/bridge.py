@@ -17,6 +17,7 @@ DEBUG = True
 
 _log = logging.getLogger("bridge")
 
+
 class Bridge:
 
     def __init__(self, mqtt: HassMqtt, ignored_labels: List):
@@ -27,6 +28,9 @@ class Bridge:
         self._last_config = 0
         self._actions = {}  # type: Dict[str, Action]
         self._log = logging.getLogger("zwbridge")
+        self._repair_time = 0
+        self._healing = False
+        #self._repair_time = int(time.time() / (24*60*60))
 
     def set_config(self, node_id: int, config_id: int, data: str):
         for i in self._nodes.values():
@@ -36,11 +40,30 @@ class Bridge:
     def nodes(self):
         return self._nodes
 
+    def check_for_repair(self, network: ZWaveNetwork):
+        now = int(time.time() / (24*60*60))
+        if now != self._repair_time:
+            try:
+                _log.info("Starting healing..")
+                self._healing = True
+                network.heal(True)
+            finally:
+                self._healing = False
+                self._repair_time = now
+                _log.info("Healing done")
+
     def _on_message(self, topic: str, data: str):
-        action = self._actions.get(topic)
-        _log.debug("Received message: %r = %r", topic, data)
-        if action:
-            action.action(data)
+        if self._healing:
+            _log.info("Healing, skipping request")
+            return
+        try:
+            action = self._actions.get(topic)
+            _log.debug("Received message: %r = %r", topic, data)
+            if action:
+                action.action(data)
+        except Exception as e:
+            _log.critical("Could not handle message %r / %r", topic, data)
+            _log.critical("Exception was", e)
 
     def register_all(self):
         self._last_config = time.time()
@@ -51,6 +74,10 @@ class Bridge:
             self._actions.update(node.register_sensors())
 
     def value_update(self, network: ZWaveNetwork, node: ZWaveNode, value: ZWaveValue):
+        self.check_for_repair(network)
+        if self._healing:
+            _log.info("Healing, skipping value update")
+            return
         n = self._nodes.get(node.name)  # type: ZwNode
         if not n:
             self._log.info("New node %s", node)
@@ -65,11 +92,13 @@ class Bridge:
                 elif value.command_class == COMMAND_CLASS_DIMMER:
                     if n.send_dimmer_data():
                         self._log.info("Dimmer data, %s => %s=%r", n.name(), value.label, value.data)
+                    if n.send_rgb_data():
+                        self._log.info("RGB: data, %s => %s=%r", n.name(), value.label, value.data)
                 elif value.command_class == COMMAND_CLASS_SWITCH:
                     if n.send_switch_data():
                         self._log.info("Switch data, %s => %s=%r", n.name(), value.label, value.data)
                 elif value.command_class == COMMAND_CLASS_RGB:
-                    if n.send_switch_data():
+                    if n.send_rgb_data():
                         self._log.info("RGB data, %s => %s=%r", n.name(), value.label, value.data)
                 elif value.command_class == COMMAND_CLASS_NOTIFICATION:
                     self._log.info("Notification data, %s => %s=%r", n.name(), value.label, value.data)
@@ -83,6 +112,9 @@ class Bridge:
                                    n.name(), value.label, value.data)
 
     def report_all(self):
+        if self._healing:
+            _log.info("Healing, skipping full report update")
+            return
         for node in self._nodes.values():
             node.send_sensor_data()
             node.send_switch_data()
