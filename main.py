@@ -12,8 +12,6 @@ from zwave_mqtt_bridge.bridge import Bridge
 from zwave_mqtt_bridge.hass_mqtt import HassMqtt
 
 
-FORMAT = '%(asctime)-15s %(message)s'
-logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 LOG = logging.getLogger("bridge")
 
 
@@ -70,7 +68,7 @@ class ZWaveComponent(Component):
 
         zw_network.start()
         try:
-            for i in range(0, 5):
+            for i in range(0, 30):
                 if zw_network.state >= zw_network.STATE_READY:
                     LOG.info("Network is ready")
                     break

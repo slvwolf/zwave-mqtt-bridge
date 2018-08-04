@@ -5,7 +5,11 @@ from apistar import ASyncApp, Route, App, http
 from main import ZWaveComponent
 from zwave_mqtt_bridge.bridge import Bridge
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    datefmt='%m-%d %H:%M',
+                    filename='zwave-gate.log',
+                    filemode='w')
 _log = logging.getLogger("main")
 
 

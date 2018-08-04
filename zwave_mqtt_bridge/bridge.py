@@ -15,6 +15,11 @@ from zwave_mqtt_bridge.zw_node import ZwNode
 
 DEBUG = True
 
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    datefmt='%m-%d %H:%M',
+                    filename='zwave-gate.log',
+                    filemode='w')
 _log = logging.getLogger("bridge")
 
 
@@ -29,6 +34,7 @@ class Bridge:
         self._actions = {}  # type: Dict[str, Action]
         self._log = logging.getLogger("zwbridge")
         self._repair_time = 0
+        self._last_repair_attempt = 0
         self._healing = False
         #self._repair_time = int(time.time() / (24*60*60))
 
@@ -41,16 +47,21 @@ class Bridge:
         return self._nodes
 
     def check_for_repair(self, network: ZWaveNetwork):
-        now = int(time.time() / (24*60*60))
-        if now != self._repair_time:
-            try:
-                _log.info("Starting healing..")
-                self._healing = True
-                network.heal(True)
-            finally:
-                self._healing = False
-                self._repair_time = now
-                _log.info("Healing done")
+        if time.time() - self._last_repair_attempt > 5*60:
+            self._last_repair_attempt = time.time()
+            if network.is_ready:
+                now = int(time.time() / (24*60*60))
+                if now != self._repair_time:
+                    try:
+                        _log.info("Starting healing..")
+                        self._healing = True
+                        network.heal(True)
+                    finally:
+                        self._healing = False
+                        self._repair_time = now
+                        _log.info("Healing done")
+            else:
+                _log.info("Healing scheduled - waiting network to be ready")
 
     def _on_message(self, topic: str, data: str):
         if self._healing:
