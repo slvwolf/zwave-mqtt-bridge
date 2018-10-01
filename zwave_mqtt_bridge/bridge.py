@@ -1,7 +1,7 @@
 import time
 import logging
 
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from openzwave.node import ZWaveNode
 from openzwave.value import ZWaveValue
@@ -38,10 +38,14 @@ class Bridge:
         self._healing = False
         #self._repair_time = int(time.time() / (24*60*60))
 
-    def set_config(self, node_id: int, config_id: int, data: str):
+    def _find_node(self, node_id: int) -> Union[ZwNode, None]:
         for i in self._nodes.values():
             if i.id() == node_id:
-                i.set_config(int(config_id), data)
+                return i
+        return None
+
+    def set_config(self, node_id: int, config_id: int, data: str):
+        self._find_node(node_id).set_config(int(config_id), data)
 
     def nodes(self):
         return self._nodes
@@ -131,3 +135,12 @@ class Bridge:
             node.send_switch_data()
             node.send_dimmer_data()
             node.send_rgb_data()
+
+    def heal(self, node_id):
+        self._find_node(node_id)._zwn.heal()
+
+    def network_update(self, node_id):
+        self._find_node(node_id)._zwn.network_update()
+
+    def neighbor_update(self, node_id):
+        self._find_node(node_id)._zwn.neighbor_update()

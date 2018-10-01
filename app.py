@@ -49,10 +49,28 @@ def push_configs(bridge: Bridge):
     return {"msg": "All nodes registered to HA"}
 
 
+def heal_node(bridge: Bridge, node_id: int):
+    bridge.heal(node_id)
+    return {"msg": "Setting done"}
+
+
+def network_update(bridge: Bridge, node_id: int):
+    bridge.network_update(node_id)
+    return {"msg": "Setting done"}
+
+
+def neighbor_update(bridge: Bridge, node_id: int):
+    bridge.neighbor_update(node_id)
+    return {"msg": "Setting done"}
+
+
 routes = [
     Route('/', 'GET', index),
     Route('/nodes/{r_node}', 'GET', route_node),
     Route('/nodes/{node_id}/config/{value_id}', 'PUT', set_config),
+    Route('/nodes/{node_id}/heal', 'POST', heal_node),
+    Route('/nodes/{node_id}/network', 'POST', network_update),
+    Route('/nodes/{node_id}/neighbor', 'POST', neighbor_update),
     Route('/ha/register', 'POST', push_configs),
 ]
 
