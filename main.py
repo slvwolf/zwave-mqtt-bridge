@@ -65,16 +65,17 @@ class ZWaveComponent(Component):
         LOG.info("*"*30)
         LOG.info("Starting network..")
         self.zw_service = zw_service
+        self.zw_service.zw_network = zw_network
 
         zw_network.start()
         try:
-            for i in range(0, 30):
-                if zw_network.state >= zw_network.STATE_READY:
-                    LOG.info("Network is ready")
+            for i in range(0, 300):
+                if zw_network.state >= zw_network.STATE_AWAKED:
+                    LOG.info("Network is ready (or actually AWAKED, but should be ok)")
                     break
                 else:
-                    time.sleep(1.0)
-                    LOG.info("Waiting.. (%i s)", i)
+                    time.sleep(5.0)
+                    LOG.info("Waiting.. (%i s). State: %s", i*5, zw_network.state_str)
             LOG.info("Starting run..")
             time.sleep(1)
             LOG.info("Registering all..")
@@ -85,13 +86,13 @@ class ZWaveComponent(Component):
             LOG.info("Diving into event loop..")
         except InterruptedError:
             LOG.info("Interrupted")
+            zw_network.stop()
         except KeyboardInterrupt:
             LOG.info("Interrupted")
+            zw_network.stop()
         except Exception as e:
             LOG.error(e)
-        # LOG.info("Stopping network")
-        # zw_network.stop()
-        # LOG.info("Service down")
+            zw_network.stop()
 
 
 def init_zwave_component():

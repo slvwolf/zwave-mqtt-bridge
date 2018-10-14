@@ -64,6 +64,10 @@ def neighbor_update(bridge: Bridge, node_id: int):
     return {"msg": "Setting done"}
 
 
+def heal_network(bridge: Bridge):
+    bridge.network_heal()
+    return {"msg": "Setting done"}
+
 routes = [
     Route('/', 'GET', index),
     Route('/nodes/{r_node}', 'GET', route_node),
@@ -72,6 +76,7 @@ routes = [
     Route('/nodes/{node_id}/network', 'POST', network_update),
     Route('/nodes/{node_id}/neighbor', 'POST', neighbor_update),
     Route('/ha/register', 'POST', push_configs),
+    Route('/network/heal', 'POST', heal_network),
 ]
 
 _log.info("Creating application")

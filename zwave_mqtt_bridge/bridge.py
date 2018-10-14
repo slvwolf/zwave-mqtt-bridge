@@ -36,6 +36,7 @@ class Bridge:
         self._repair_time = 0
         self._last_repair_attempt = 0
         self._healing = False
+        self.zw_network = None
         #self._repair_time = int(time.time() / (24*60*60))
 
     def _find_node(self, node_id: int) -> Union[ZwNode, None]:
@@ -144,3 +145,6 @@ class Bridge:
 
     def neighbor_update(self, node_id):
         self._find_node(node_id)._zwn.neighbor_update()
+
+    def network_heal(self):
+        self.zw_network.heal()

@@ -26,7 +26,6 @@ class ZwNode:
         self._cmds = dict()   # type: Dict[str, Union[HassCommand, HassDimmer, HassRgbLight, HassSensor]]
         self._topics = dict()  # type: Dict[str, Action]
         self._config = dict()  # type: Dict[str, str]
-        self._zwn.is_ready = True
 
     @staticmethod
     def _scale_to_hass(data: int) -> int:
