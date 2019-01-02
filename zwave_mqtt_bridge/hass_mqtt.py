@@ -67,12 +67,13 @@ class HassCommand(HassBase):
 class HassDimmer(HassCommand):
 
     def __init__(self, domain: str, name: str, light_name: str):
-        HassCommand.__init__(self, domain, "light", name, light_name, "mqtt_json")
+        HassCommand.__init__(self, domain, "light", name, light_name, "mqtt")
 
     def generate_config(self):
         data = HassCommand.generate_config(self)
         v = data[self._device_type][0]
         v["brightness"] = True
+        v["schema"] = "json"
         return data
 
     def __repr__(self):
@@ -171,7 +172,7 @@ class HassMqtt:
 
     def send_light_state(self, cmd: HassDimmer, brightness: int=None, color: List[int]=None):
         """
-        Example message for mqtt_json lights
+        Example message for mqtt / json lights
             {
               "brightness": 255,
               "color_temp": 155,
