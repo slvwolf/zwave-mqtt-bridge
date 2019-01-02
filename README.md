@@ -27,12 +27,7 @@ Service will open up status page on `http://127.0.0.1:5000`
 
 - Sensors
 - Binary sensors
-- Light controls
-- Light brightness
+- All Lights
 
 ## Known issues
-
-- RGB light colors are not controllable
-- Auto discovery messages are sent only during initialization (bridge needs to be restarted if Home Assistant is
-rebooted)
-
+- RGB State is not supported
