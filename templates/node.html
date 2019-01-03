@@ -32,20 +32,16 @@
               <table class="table table-striped">
                     <thead>
                     <tr>
-                        <th>Group</th>
                         <th>Key</th>
                         <th>Value</th>
                     </tr>
                     </thead>
                     <tbody>
                     {% for i_k, i_v in node.metrics().items() %}
-                    {% for j_k, j_v in i_v[0].items() %}
                     <tr>
                         <td>{{ i_k }}</td>
-                        <td>{{ j_k }}</td>
-                        <td>{{ j_v }}</td>
+                        <td>{{ i_v }}</td>
                     </tr>
-                    {% endfor %}
                     {% endfor %}
                     </tbody>
                 </table>

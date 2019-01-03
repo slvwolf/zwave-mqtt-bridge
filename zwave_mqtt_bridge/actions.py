@@ -19,11 +19,14 @@ class SwitchAction(Action):
         Action.__init__(self)
         self._zwn = zwn
         self._switch_id = switch_id
+        self.state = False
 
-    def action(self, data: str):
+    def action(self, data: str, relay=True):
         toggle = data in [b"ON", b"True"]
-        self._log.info("Switch Action: %s (%i) set to %r (raw: %s)", self._zwn.name, self._switch_id, toggle, data)
-        self._zwn.set_switch(self._switch_id, toggle)
+        self.state = toggle
+        if relay:
+            self._log.info("Switch Action: %s (%i) set to %r (raw: %s)", self._zwn.name, self._switch_id, toggle, data)
+            self._zwn.set_switch(self._switch_id, toggle)
 
 
 class DimmerAction(Action):
@@ -32,6 +35,7 @@ class DimmerAction(Action):
         Action.__init__(self)
         self._zwn = zwn
         self._switch_id = switch_id
+        self.brightness = 0
 
     def action(self, raw: bytes):
         data = json.loads(raw.decode("utf8"))
@@ -55,6 +59,7 @@ class RgbAction(Action):
         Action.__init__(self)
         self._zwn = zwn
         self._value_id = value_id
+        self.rgbw = [0, 0, 0, 0]
 
     def action(self, raw: bytes):
         data = json.loads(raw.decode("utf8"))
@@ -71,8 +76,10 @@ class RgbAction(Action):
             if r_color:
                 r, g, b = ["{0:#0{1}x}".format(r_color[k], 4).upper()[2:4] for k in ["r", "g", "b"]]
             color = "#" + r + g + b + w
+            self.rgbw = [r, g, b, w]
             self._zwn.set_rgbw(self._value_id, color)
             self._log.info("RGB Action: %s (%i) set to %r (raw: %s)", self._zwn.name, self._value_id, color, raw)
         else:
             self._zwn.set_rgbw(self._value_id, "#00000000")
+            self.rgbw = [0, 0, 0, 0]
             self._log.info("RGB Action: %s (%i) set to OFF (raw: %s)", self._zwn.name, self._value_id, raw)

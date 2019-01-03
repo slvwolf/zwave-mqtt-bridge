@@ -8,8 +8,7 @@ from openzwave.value import ZWaveValue
 from openzwave.network import ZWaveNetwork
 
 from zwave_mqtt_bridge.actions import Action
-from zwave_mqtt_bridge.command_classes import SENSORS, COMMAND_CLASS_NOTIFICATION, COMMAND_CLASS_RGB, \
-    COMMAND_CLASS_SWITCH, COMMAND_CLASS_DIMMER
+
 from zwave_mqtt_bridge.hass_mqtt import HassMqtt
 from zwave_mqtt_bridge.zw_node import ZwNode
 
@@ -84,10 +83,7 @@ class Bridge:
     def register_all(self):
         self._last_config = time.time()
         for node in self._nodes.values():
-            self._actions.update(node.register_rgbw())
-            self._actions.update(node.register_dimmers())
-            self._actions.update(node.register_switches())
-            self._actions.update(node.register_sensors())
+            self._actions.update(node.register())
 
     def value_update(self, network: ZWaveNetwork, node: ZWaveNode, value: ZWaveValue):
         self.check_for_repair(network)
@@ -105,26 +101,8 @@ class Bridge:
                     return
                 if n.is_spamming():
                     return
-                elif value.command_class == COMMAND_CLASS_DIMMER:
-                    if n.send_dimmer_data():
-                        self._log.info("Dimmer data, %s => %s=%r", n.name(), value.label, value.data)
-                    if n.send_rgb_data():
-                        self._log.info("RGB: data, %s => %s=%r", n.name(), value.label, value.data)
-                elif value.command_class == COMMAND_CLASS_SWITCH:
-                    if n.send_switch_data():
-                        self._log.info("Switch data, %s => %s=%r", n.name(), value.label, value.data)
-                elif value.command_class == COMMAND_CLASS_RGB:
-                    if n.send_rgb_data():
-                        self._log.info("RGB data, %s => %s=%r", n.name(), value.label, value.data)
-                elif value.command_class == COMMAND_CLASS_NOTIFICATION:
-                    self._log.info("Notification data, %s => %s=%r", n.name(), value.label, value.data)
-                    n.send_sensor_data()
-                elif value.command_class in SENSORS:
-                    if n.send_sensor_data():
-                        self._log.info("Sensor (%s) data, %s => %s=%r", hex(value.command_class),
-                                       n.name(), value.label, value.data)
-                else:
-                    self._log.info("Unknown data (Command class: %r), %s => %s=%r (Skipping)", hex(value.command_class),
+                if not n.update_state(value):
+                    self._log.info("Value update (Command class: %r), %s => %s=%r (NOT HANDLED)", hex(value.command_class),
                                    n.name(), value.label, value.data)
 
     def report_all(self):
@@ -132,10 +110,7 @@ class Bridge:
             _log.info("Healing, skipping full report update")
             return
         for node in self._nodes.values():
-            node.send_sensor_data()
-            node.send_switch_data()
-            node.send_dimmer_data()
-            node.send_rgb_data()
+            node.send_data()
 
     def heal(self, node_id):
         self._find_node(node_id)._zwn.heal()
