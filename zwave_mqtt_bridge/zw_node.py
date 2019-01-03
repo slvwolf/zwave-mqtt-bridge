@@ -77,6 +77,9 @@ class Metrics:
         new_value = self._get_true_value(value.data)
         old_value = self._data.get(label)
         if old_value != new_value:
+            # Fix for some sensors not always registering sensor movement
+            if label == "burglar":
+                self.set_direct("sensor", "on" if int(new_value) > 0 else "off")
             self._data[label] = new_value
             self._dirty = True
 
