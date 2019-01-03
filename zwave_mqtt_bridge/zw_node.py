@@ -60,6 +60,8 @@ class Metrics:
     def _get_true_value(value):
         if isinstance(value, float):
             value = "%.2f" % value
+        if isinstance(value, bool):
+            value = "on" if value else "off"
         return value
 
     def set_direct(self, key: str, new_value):
