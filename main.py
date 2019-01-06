@@ -81,18 +81,20 @@ class ZWaveComponent(Component):
             LOG.info("Registering all..")
             zw_service.register_all()
             time.sleep(1)
-            LOG.info("Reporting all..")
-            zw_service.report_all()
             LOG.info("Diving into event loop..")
-        except InterruptedError:
+        except InterruptedError as e:
             LOG.info("Interrupted")
             zw_network.stop()
+            time.sleep(10)
+            raise e
         except KeyboardInterrupt:
             LOG.info("Interrupted")
             zw_network.stop()
         except Exception as e:
             LOG.error(e)
             zw_network.stop()
+            time.sleep(10)
+            raise e
 
 
 def init_zwave_component():

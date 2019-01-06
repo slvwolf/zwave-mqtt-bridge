@@ -7,8 +7,6 @@ from openzwave.node import ZWaveNode
 from openzwave.value import ZWaveValue
 from openzwave.network import ZWaveNetwork
 
-from zwave_mqtt_bridge.actions import Action
-
 from zwave_mqtt_bridge.hass_mqtt import HassMqtt
 from zwave_mqtt_bridge.zw_node import ZwNode
 
@@ -27,10 +25,8 @@ class Bridge:
     def __init__(self, mqtt: HassMqtt, ignored_labels: List):
         self._ignored_labels = ignored_labels
         self._mqtt = mqtt
-        self._mqtt.on_message = self._on_message
         self._nodes = {}  # type: Dict[str, ZwNode]
         self._last_config = 0
-        self._actions = {}  # type: Dict[str, Action]
         self._log = logging.getLogger("zwbridge")
         self._repair_time = 0
         self._last_repair_attempt = 0
@@ -67,23 +63,10 @@ class Bridge:
             else:
                 _log.info("Healing scheduled - waiting network to be ready")
 
-    def _on_message(self, topic: str, data: str):
-        if self._healing:
-            _log.info("Healing, skipping request")
-            return
-        try:
-            action = self._actions.get(topic)
-            _log.debug("Received message: %r = %r", topic, data)
-            if action:
-                action.action(data)
-        except Exception as e:
-            _log.critical("Could not handle message %r / %r", topic, data)
-            _log.critical("Exception was", e)
-
     def register_all(self):
         self._last_config = time.time()
         for node in self._nodes.values():
-            self._actions.update(node.register())
+            node.register(self._mqtt)
 
     def value_update(self, network: ZWaveNetwork, node: ZWaveNode, value: ZWaveValue):
         self.check_for_repair(network)
@@ -104,13 +87,8 @@ class Bridge:
                 if not n.update_state(value):
                     self._log.info("Value update (Command class: %r), %s => %s=%r (NOT HANDLED)", hex(value.command_class),
                                    n.name(), value.label, value.data)
-
-    def report_all(self):
-        if self._healing:
-            _log.info("Healing, skipping full report update")
-            return
-        for node in self._nodes.values():
-            node.send_data()
+        else:
+            _log.debug("Unhandled message of genre %r (%r, %r)", value.genre, value.label, value.data)
 
     def heal(self, node_id):
         self._find_node(node_id)._zwn.heal()

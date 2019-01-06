@@ -10,15 +10,17 @@
                 <table class="table table-striped">
                     <thead>
                     <tr>
-                        <th>Topic</th>
-                        <th>Action</th>
+                        <th>Id</th>
+                        <th>Name</th>
+                        <th>Details</th>
                     </tr>
                     </thead>
                     <tbody>
-                    {% for i_k, i_v in node.topics().items() %}
+                    {% for i_k, i_v in node.devices().items() %}
                     <tr>
                         <td>{{ i_k }}</td>
-                        <td>{{ i_v.__class__.__name__ }}</td>
+                        <td>{{ i_v.label }}</td>
+                        <td>{{ i_v }}</td>
                     </tr>
                     {% endfor %}
                     </tbody>
