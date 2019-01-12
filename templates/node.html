@@ -1,10 +1,15 @@
 {% include 'header.html' %}
 <div class="container-fluid">
     <div class="row">
-        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+        <div class="col-md-12 main">
             <p><a href="/">Back</a></p>
             <h2 class="sub-header">{{node.id()}} - {{node.name()}}</h2>
-            <p>{{ node.model() }}</p>
+
+            <p><a href="/nodes/{{- node.id() -}}/heal">Heal</a></p>
+            <p><a href="/nodes/{{- node.id() -}}/refresh">Refresh</a></p>
+            <p><a href="/nodes/{{- node.id() -}}/network">Network</a></p>
+            <p><a href="/nodes/{{- node.id() -}}/neighbor">Neighbor</a></p>
+
             <h3 class="sub-header">Topics</h3>
             <div class="table-responsive">
                 <table class="table table-striped">
@@ -47,23 +52,125 @@
                     {% endfor %}
                     </tbody>
                 </table>
-            <h3 class="sub-header">Z-Wave Values</h3>
+            <h3 class="sub-header">Z-Wave Values (Basic)</h3>
             <div class="table-responsive">
                 <table class="table table-striped">
                     <thead>
                     <tr>
                         <th>Key</th>
+                        <th>ReadOnly/WriteOnly</th>
                         <th>Label</th>
                         <th>Value</th>
+                        <th>Help</th>
                     </tr>
                     </thead>
                     <tbody>
                     {% for i_k, i_v in node.zw_values().items() %}
+                        {% if i_v.genre == "Basic" %}
+                            <tr>
+                                <td>{% if i_v.is_read_only %} RO {% endif %}
+                                    {% if i_v.is_write_only %} WO {% endif %}</td>
+                                <td>{{ i_v.label }}</td>
+                                <td>{{ i_v.data }}</td>
+                                <td>{{ i_v.help }}</tr>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="sub-header">Z-Wave Values (System)</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
                     <tr>
-                        <td>{{ i_k }}</td>
-                        <td>{{ i_v.label }}</td>
-                        <td>{{ i_v.data }}</td>
+                        <th>Key</th>
+                        <th>ReadOnly/WriteOnly</th>
+                        <th>Label</th>
+                        <th>Value</th>
+                        <th>Help</th>
                     </tr>
+                    </thead>
+                    <tbody>
+                    {% for i_k, i_v in node.zw_values().items() %}
+                        {% if i_v.genre == "System" %}
+                            <tr>
+                                <td>{{ i_k }}</td>
+                                <td>{% if i_v.is_read_only %} RO {% endif %}
+                                    {% if i_v.is_write_only %} WO {% endif %}</td>
+                                <td>{{ i_v.label }}</td>
+                                <td>{{ i_v.data }}</td>
+                                <td>{{ i_v.help }}</tr>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+
+            <h3 class="sub-header">Z-Wave Values (User)</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Genre</th>
+                        <th>ReadOnly/WriteOnly</th>
+                        <th>Label</th>
+                        <th>Value</th>
+                        <th>Help</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for i_k, i_v in node.zw_values().items() %}
+                        {% if i_v.genre == "User" %}
+                            <tr>
+                                <td>{{ i_k }}</td>
+                                <td>{{ i_v.genre }}</td>
+                                <td>{% if i_v.is_read_only %} RO {% endif %}
+                                    {% if i_v.is_write_only %} WO {% endif %}</td>
+                                <td>{{ i_v.label }}</td>
+                                <td>{{ i_v.data }}</td>
+                                <td>{{ i_v.help }}</tr>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="sub-header">Z-Wave Values (Config)</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Index</th>
+                        <th>Genre</th>
+                        <th>ReadOnly/WriteOnly</th>
+                        <th>Label</th>
+                        <th>Index</th>
+                        <th>Value</th>
+                        <th>Help</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for i_k, i_v in node.zw_values().items() %}
+                        {% if i_v.genre == "Config" %}
+                            <tr>
+                                <td>{{ i_k }}</td>
+                                <td>{{ i_v.index }}</td>
+                                <td>{{ i_v.genre }}</td>
+                                <td>{% if i_v.is_read_only %} RO {% endif %}
+                                    {% if i_v.is_write_only %} WO {% endif %}</td>
+                                <td>{{ i_v.label }}</td>
+                                <td>{{ i_v.index }}</td>
+                                <td>{{ i_v.data }}</td>
+                                <td>{{ i_v.help }}</tr>
+                            </tr>
+                        {% endif %}
                     {% endfor %}
                     </tbody>
                 </table>

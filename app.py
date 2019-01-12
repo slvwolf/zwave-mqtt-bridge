@@ -16,7 +16,7 @@ _log = logging.getLogger("main")
 def index(app: App, bridge: Bridge):
     try:
         nodes = bridge.nodes()
-        return app.render_template('index.html', nodes=nodes)
+        return app.render_template('index.html', nodes=nodes, network=bridge.zw_network)
     except Exception as e:
         _log.warning("Could not show index", e)
 
@@ -40,7 +40,11 @@ def route_node(app: App, bridge: Bridge, r_node: str):
 
 
 def set_config(bridge: Bridge, node_id: int, value_id: int, value: str):
-    bridge.set_config(node_id, value_id, value)
+    try:
+        bridge.set_config(node_id, value_id, value)
+    except Exception as e:
+        _log.error(e)
+        raise e
     return {"msg": "Setting done"}
 
 
@@ -49,32 +53,66 @@ def push_configs(bridge: Bridge):
     return {"msg": "All nodes registered to HA"}
 
 
+def html_node_cmd(action, node_id, result_f):
+    try:
+        return app.render_template('node_cmd.html', action=action, node_id=node_id, result=result_f())
+    except Exception as e:
+        _log.warning("Could not show index", e)
+    return {"msg": "Error"}
+
+
 def heal_node(bridge: Bridge, node_id: int):
-    bridge.heal(node_id)
-    return {"msg": "Setting done"}
+    return html_node_cmd("Heal", node_id, lambda: bridge.heal(node_id))
+
+
+def add_node(bridge: Bridge):
+    r = bridge.add_node()
+    return {"msg": "Waiting to add node (%r)" % r}
+
+
+def rename_node(bridge: Bridge, node_id: int, name: str):
+    r = bridge.rename_node(node_id, name)
+    return {"msg": "Renamed (%r)" % r}
 
 
 def network_update(bridge: Bridge, node_id: int):
-    bridge.network_update(node_id)
-    return {"msg": "Setting done"}
+    return html_node_cmd("Network Update", node_id, lambda: bridge.network_update(node_id))
 
 
 def neighbor_update(bridge: Bridge, node_id: int):
-    bridge.neighbor_update(node_id)
-    return {"msg": "Setting done"}
+    return html_node_cmd("Neighbor Update", node_id, lambda: bridge.neighbor_update(node_id))
 
 
 def heal_network(bridge: Bridge):
     bridge.network_heal()
     return {"msg": "Setting done"}
 
+
+def write_config(bridge: Bridge):
+    bridge.write_config()
+    return {"msg": "Setting done"}
+
+
+def update_config(bridge: Bridge):
+    r = bridge.update_config()
+    return {"msg": "%r" % r}
+
+
+def refresh_info(bridge: Bridge, node_id: int):
+    return html_node_cmd("Refresh", node_id, lambda: bridge.refresh_info(node_id))
+
+
 routes = [
     Route('/', 'GET', index),
+    Route('/network/write_config', 'POST', write_config),
+    Route('/controller/add_node', 'POST', add_node),
+    Route('/controller/update_config', 'POST', update_config),
     Route('/nodes/{r_node}', 'GET', route_node),
     Route('/nodes/{node_id}/config/{value_id}', 'PUT', set_config),
-    Route('/nodes/{node_id}/heal', 'POST', heal_node),
-    Route('/nodes/{node_id}/network', 'POST', network_update),
-    Route('/nodes/{node_id}/neighbor', 'POST', neighbor_update),
+    Route('/nodes/{node_id}/heal', 'GET', heal_node),
+    Route('/nodes/{node_id}/refresh', 'GET', refresh_info),
+    Route('/nodes/{node_id}/network', 'GET', network_update),
+    Route('/nodes/{node_id}/neighbor', 'GET', neighbor_update),
     Route('/ha/register', 'POST', push_configs),
     Route('/network/heal', 'POST', heal_network),
 ]

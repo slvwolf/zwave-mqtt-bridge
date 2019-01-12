@@ -1,3 +1,4 @@
+import json
 import time
 import logging
 
@@ -41,7 +42,7 @@ class Bridge:
         return None
 
     def set_config(self, node_id: int, config_id: int, data: str):
-        self._find_node(node_id).set_config(int(config_id), data)
+        self._find_node(node_id).set_config(int(config_id), json.loads(data))
 
     def nodes(self):
         return self._nodes
@@ -77,7 +78,10 @@ class Bridge:
         if not n:
             self._log.info("New node %s", node)
             n = ZwNode(node, self._mqtt, self._ignored_labels)
-            self._nodes[node.name] = n
+            name = node.name
+            if node.name == "":
+                name = str(node.node_id)
+            self._nodes[name] = n
         if value.genre == "User":
             if self._last_config:
                 if value.label.lower() in self._ignored_labels:
@@ -94,10 +98,25 @@ class Bridge:
         self._find_node(node_id)._zwn.heal()
 
     def network_update(self, node_id):
-        self._find_node(node_id)._zwn.network_update()
+        return self.zw_network.controller.request_network_update(node_id)
 
     def neighbor_update(self, node_id):
-        self._find_node(node_id)._zwn.neighbor_update()
+        return self.zw_network.controller.request_node_neighbor_update(node_id)
 
     def network_heal(self):
-        self.zw_network.heal()
+        return self.zw_network.heal()
+
+    def add_node(self):
+        return self.zw_network.controller.add_node()
+
+    def write_config(self):
+        return self.zw_network.write_config()
+
+    def update_config(self):
+        return self.zw_network.controller.update_ozw_config()
+
+    def rename_node(self, node_id, name):
+        pass
+
+    def refresh_info(self, node_id):
+        return self.zw_network.controller.send_node_information(node_id)

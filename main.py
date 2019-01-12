@@ -2,6 +2,7 @@ import time
 import logging
 import yaml
 import sys
+import threading
 
 from apistar import Component
 from openzwave.network import ZWaveNetwork
@@ -20,6 +21,35 @@ class ZWaveComponent(Component):
 
     def resolve(self) -> Bridge:
         return self.zw_service
+
+    def loop(self):
+        try:
+            for i in range(0, 300):
+                if self.zw_network.state >= self.zw_network.STATE_AWAKED:
+                    LOG.info("Network is ready (or actually AWAKED, but should be ok)")
+                    break
+                else:
+                    time.sleep(5.0)
+                    LOG.info("Waiting.. (%i s). State: %s", i*5, self.zw_network.state_str)
+            LOG.info("Starting run..")
+            time.sleep(1)
+            LOG.info("Registering all..")
+            self.zw_service.register_all()
+            time.sleep(1)
+            LOG.info("Diving into event loop..")
+        except InterruptedError as e:
+            LOG.info("Interrupted")
+            self.zw_network.stop()
+            time.sleep(10)
+            raise e
+        except KeyboardInterrupt:
+            LOG.info("Interrupted")
+            self.zw_network.stop()
+        except Exception as e:
+            LOG.error(e)
+            self.zw_network.stop()
+            time.sleep(10)
+            raise e
 
     def __init__(self):
         Component.__init__(self)
@@ -66,37 +96,15 @@ class ZWaveComponent(Component):
         LOG.info("Starting network..")
         self.zw_service = zw_service
         self.zw_service.zw_network = zw_network
+        self.zw_network = zw_network
 
         zw_network.start()
-        try:
-            for i in range(0, 300):
-                if zw_network.state >= zw_network.STATE_AWAKED:
-                    LOG.info("Network is ready (or actually AWAKED, but should be ok)")
-                    break
-                else:
-                    time.sleep(5.0)
-                    LOG.info("Waiting.. (%i s). State: %s", i*5, zw_network.state_str)
-            LOG.info("Starting run..")
-            time.sleep(1)
-            LOG.info("Registering all..")
-            zw_service.register_all()
-            time.sleep(1)
-            LOG.info("Diving into event loop..")
-        except InterruptedError as e:
-            LOG.info("Interrupted")
-            zw_network.stop()
-            time.sleep(10)
-            raise e
-        except KeyboardInterrupt:
-            LOG.info("Interrupted")
-            zw_network.stop()
-        except Exception as e:
-            LOG.error(e)
-            zw_network.stop()
-            time.sleep(10)
-            raise e
+        LOG.info("Starting monitoring thread..")
+        self.loop()
+        #self.t = threading.Thread(target=self.loop)
+        #self.t.start()
 
 
 def init_zwave_component():
-    return ZWaveComponent()
-
+    zw = ZWaveComponent()
+    return zw

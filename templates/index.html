@@ -15,6 +15,8 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+            <h2 class="sub-header">Network State: {{ network.state_str }} </h2>
+            ( Ready: {{network.is_ready }} )
             <h2 class="sub-header">Available Nodes</h2>
             <div class="table-responsive">
                 <table class="table table-striped">
@@ -23,6 +25,7 @@
                         <th>ID</th>
                         <th>Name</th>
                         <th>Model</th>
+                        <th>States</th>
                         <th>Topics</th>
                     </tr>
                     </thead>
@@ -32,6 +35,10 @@
                         <td>{{node.id()}}</td>
                         <td><a href="nodes/{{node.name()}}">{{node.name()}}</a></td>
                         <td>{{ node.model() }}</td>
+                        <td>{% if node.is_failed %} FAILED {% endif %}
+                            {% if node.is_sleeping %} Sleeping {% endif %}
+                            {% if node.is_ready %} Ready {% endif %}
+                        </td>
                         <td>{{node.registration_state()}}</td>
                     </tr>
                     {% endfor %}
