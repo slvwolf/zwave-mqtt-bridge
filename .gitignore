@@ -106,3 +106,4 @@ ENV/
 .mypy_cache/
 
 deploy.sh
+deploy2.sh
