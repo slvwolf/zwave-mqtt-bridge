@@ -84,10 +84,21 @@ class ZWaveComponent(Component):
         def network_failed(network):
             LOG.info("Network failed to load. Found %d nodes", network.nodes_count)
 
+        def signal_notification(args):
+            if args.get("notificationCode") == 1:
+                LOG.warning("Error communicating with node %r", args.get("nodeId"))
+            else:
+                LOG.info("Notification %r", args)
+
+        def controller_command(*args, **kwargs):
+            LOG.info("Controller %r, %r", args, kwargs)
+
         def network_started(network):
             LOG.info("Network started. Found %d nodes.", network.nodes_count)
             dispatcher.connect(zw_service.value_update, ZWaveNetwork.SIGNAL_VALUE)
 
+        dispatcher.connect(signal_notification, ZWaveNetwork.SIGNAL_NOTIFICATION)
+        dispatcher.connect(controller_command, ZWaveNetwork.SIGNAL_CONTROLLER_COMMAND)
         dispatcher.connect(network_started, ZWaveNetwork.SIGNAL_NETWORK_STARTED)
         dispatcher.connect(network_failed, ZWaveNetwork.SIGNAL_NETWORK_FAILED)
         dispatcher.connect(network_ready, ZWaveNetwork.SIGNAL_NETWORK_READY)

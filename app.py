@@ -21,7 +21,7 @@ def index(app: App, bridge: Bridge):
         _log.warning("Could not show index", e)
 
 
-def route_node(app: App, bridge: Bridge, r_node: str):
+def _r(app: App, bridge: Bridge, r_node: str, page: str):
     try:
         node = bridge.nodes().get(r_node)
         if not node:
@@ -34,9 +34,25 @@ def route_node(app: App, bridge: Bridge, r_node: str):
                                       "requested_node": r_node,
                                       "available_nodes": bridge.nodes().keys()},
                                      status_code=404)
-        return app.render_template('node.html', node=node)
+        return app.render_template('node%s.html' % page, node=node)
     except Exception as e:
         _log.warning("Could not show index", e)
+
+
+def route_node(app: App, bridge: Bridge, r_node: str):
+    return _r(app, bridge, r_node, "")
+
+
+def route_commands(app: App, bridge: Bridge, r_node: str):
+    return _r(app, bridge, r_node, "_commands")
+
+
+def route_config(app: App, bridge: Bridge, r_node: str):
+    return _r(app, bridge, r_node, "_config")
+
+
+def route_metrics(app: App, bridge: Bridge, r_node: str):
+    return _r(app, bridge, r_node, "_metrics")
 
 
 def set_config(bridge: Bridge, node_id: int, value_id: int, value: str):
@@ -70,6 +86,11 @@ def add_node(bridge: Bridge):
     return {"msg": "Waiting to add node (%r)" % r}
 
 
+def remove_node(bridge: Bridge):
+    r = bridge.zw_network.controller.remove_node()
+    return {"msg": "Waiting to remove node (%r)" % r}
+
+
 def rename_node(bridge: Bridge, node_id: int, name: str):
     r = bridge.rename_node(node_id, name)
     return {"msg": "Renamed (%r)" % r}
@@ -81,6 +102,10 @@ def network_update(bridge: Bridge, node_id: int):
 
 def neighbor_update(bridge: Bridge, node_id: int):
     return html_node_cmd("Neighbor Update", node_id, lambda: bridge.neighbor_update(node_id))
+
+
+def remove_faulty_node(bridge: Bridge, node_id: int):
+    return html_node_cmd("Remove Faulty Node", node_id, lambda: bridge.zw_network.controller.remove_failed_node(node_id))
 
 
 def heal_network(bridge: Bridge):
@@ -104,17 +129,23 @@ def refresh_info(bridge: Bridge, node_id: int):
 
 routes = [
     Route('/', 'GET', index),
-    Route('/network/write_config', 'POST', write_config),
-    Route('/controller/add_node', 'POST', add_node),
-    Route('/controller/update_config', 'POST', update_config),
+    Route('/network/write_config', 'GET', write_config),
+    Route('/controller/add_node', 'GET', add_node),
+    Route('/controller/remove_node', 'GET', remove_node),
+    Route('/controller/update_config', 'GET', update_config),
+    Route('/network/heal', 'GET', heal_network),
     Route('/nodes/{r_node}', 'GET', route_node),
+    Route('/nodes/{r_node}/commands', 'GET', route_commands),
+    Route('/nodes/{r_node}/config', 'GET', route_config),
+    Route('/nodes/{r_node}/metrics', 'GET', route_metrics),
+
     Route('/nodes/{node_id}/config/{value_id}', 'PUT', set_config),
     Route('/nodes/{node_id}/heal', 'GET', heal_node),
     Route('/nodes/{node_id}/refresh', 'GET', refresh_info),
     Route('/nodes/{node_id}/network', 'GET', network_update),
     Route('/nodes/{node_id}/neighbor', 'GET', neighbor_update),
+    Route('/nodes/{node_id}/remove', 'GET', remove_faulty_node),
     Route('/ha/register', 'POST', push_configs),
-    Route('/network/heal', 'POST', heal_network),
 ]
 
 _log.info("Creating application")

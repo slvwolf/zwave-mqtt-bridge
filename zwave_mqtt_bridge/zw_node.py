@@ -59,7 +59,9 @@ class Metrics:
     def _get_true_value(value):
         if isinstance(value, float):
             value = "%.2f" % value
-        if isinstance(value, bool):
+        elif isinstance(value, int):
+            value = "%i" % value
+        elif isinstance(value, bool):
             value = "on" if value else "off"
         return value
 
@@ -77,9 +79,13 @@ class Metrics:
         old_value = self._data.get(label)
         if old_value != new_value:
             # Fix for some sensors not always registering sensor movement
-            if label == "burglar":
+            if label in ["burglar"]:
                 self.set_direct("sensor", "on" if int(new_value) > 0 else "off")
-            self._data[label] = new_value
+                self._data[label] = new_value
+            elif label in ["sensor"]:
+                self.set_direct("sensor", "on" if int(new_value) > 0 else "off")
+            else:
+                self._data[label] = new_value
             self._dirty = True
 
     def should_send(self):
@@ -110,6 +116,9 @@ class ZwNode:
     @staticmethod
     def _scale_to_hass(data: int) -> int:
         return int(data * 255 / 95)
+
+    def get_data(self):
+        return self._m.data()
 
     def devices(self):
         return self._devices
@@ -177,14 +186,15 @@ class ZwNode:
         """
         values = self._zwn.get_sensors()
         values.update(self._zwn.get_values_for_command_class(COMMAND_CLASS_NOTIFICATION))
-        for s_id in values:
-            self._m.set_from_value(self._zwn.values[s_id])
-        battery = self._zwn.get_battery_level()
-        if battery:
-            self._m.set_direct("battery", battery)
+        values.update(self._zwn.get_usercodes())
+        values.update(self._zwn.get_battery_levels())
+        for s_id, v in self._zwn.get_values().items():
+            # v = self._zwn.values[s_id]  # type: ZWaveValue
+            self._m.set_from_value(v)
 
     def _mqtt_metrics_send(self):
-        LOG.info("Sending metrics for %r: %r ", self._zwn.name, self._m.data())
+        LOG.debug("Sending metrics for %r: %r ", self._zwn.name, self._m.data())
+        LOG.info("Sending metrics for %r: %r ", self._zwn.name, len(self._m.data()))
         self._mqtt.send_metrics(self._cmds.get("metrics"), self._m.data())
 
     def register(self, hass_mqtt: HassMqtt):
@@ -199,16 +209,15 @@ class ZwNode:
         """
         cmd = self._mqtt.register_metrics(self._zwn.location, self._zwn.name)
         self._cmds["metrics"] = cmd
-        for s_id in self._zwn.get_sensors():
-            v = self._zwn.values[s_id]  # type: ZWaveValue
+        values = self._zwn.get_values()
+#        values = self._zwn.get_sensors()
+#        values.update(self._zwn.get_values_for_command_class(COMMAND_CLASS_NOTIFICATION))
+#        values.update(self._zwn.get_usercodes())
+#        values.update(self._zwn.get_battery_levels())
+        for s_id, v in self._zwn.get_values().items():
+            #v = self._zwn.values[s_id]  # type: ZWaveValue
             cmd.add_metric(self._labels.get_true_label(v))
-            LOG.info("Sensor %s / %s", self._zwn.name, self._labels.get_true_label(v))
-        for s_id in self._zwn.get_values_for_command_class(COMMAND_CLASS_NOTIFICATION):
-            v = self._zwn.values[s_id]  # type: ZWaveValue
-            cmd.add_metric(self._labels.get_true_label(v))
-            LOG.info("Sensor (Notification) %s / %s", self._zwn.name, self._labels.get_true_label(v))
-        if self._zwn.get_battery_level():
-            cmd.add_metric("battery")
+            LOG.debug("[%s] New Sensor %s", self._zwn.name, self._labels.get_true_label(v))
         self._collect_initial_sensor_data()
         return True
 

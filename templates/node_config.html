@@ -1,0 +1,36 @@
+{% include 'header.html' %}
+<div class="row">
+    <div class="col-md-12 main">
+        <h3 class="sub-header">Configuration</h3>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Access</th>
+                    <th>Label</th>
+                    <th>Value</th>
+                    <th>Help</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for i_k, i_v in node.zw_values().items() %}
+                {% if i_v.genre == "Config" %}
+                <tr>
+                    <td>{{ i_v.index }}</td>
+                    <td>{% if i_v.is_read_only %} RO {% endif %}
+                        {% if i_v.is_write_only %} WO {% endif %}
+                    </td>
+                    <td>{{ i_v.label }}</td>
+                    <td>{{ i_v.data }}</td>
+                    <td>{{ i_v.help }}
+                </tr>
+                </tr>
+                {% endif %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% include 'footer.html' %}

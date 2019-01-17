@@ -91,8 +91,17 @@ class Bridge:
                 if not n.update_state(value):
                     self._log.info("Value update (Command class: %r), %s => %s=%r (NOT HANDLED)", hex(value.command_class),
                                    n.name(), value.label, value.data)
+        elif value.genre == "System":
+            self._log.debug("System (Command class: %r), %s => %s=%r (NOT HANDLED)", hex(value.command_class),
+                           n.name(), value.label, value.data)
+        elif value.genre == "Config":
+            self._log.debug("Config (Command class: %r), %s => %s=%r (NOT HANDLED)", hex(value.command_class),
+                           n.name(), value.label, value.data)
+        elif value.genre == "Basic":
+            self._log.debug("Basic (Command class: %r), %s => %s=%r (NOT HANDLED)", hex(value.command_class),
+                           n.name(), value.label, value.data)
         else:
-            _log.debug("Unhandled message of genre %r (%r, %r)", value.genre, value.label, value.data)
+            _log.info("Unhandled message of genre %r (%r, %r)", value.genre, value.label, value.data)
 
     def heal(self, node_id):
         self._find_node(node_id)._zwn.heal()

@@ -1,0 +1,75 @@
+{% include 'header.html' %}
+<div class="row">
+    <div class="col-md-12">
+        <h2 class="sub-header">{{node.id()}} - {{node.name()}}</h2>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Heal Node</h5>
+                <p class="card-text">Heal network node by requesting the node rediscover their neighbors. Sends a
+                    ControllerCommand_RequestNodeNeighborUpdate to the node.</p>
+                <a href="/nodes/{{- node.id() -}}/heal" class="btn btn-primary">Heal</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Refresh Node</h5>
+                <p class="card-text">
+                    Causes the nodes data to be obtained from the Z-Wave network in the same way as if it had just
+                    been added. This method would normally be called automatically by OpenZWave, but if you know
+                    that a node has been changed, calling this method will force a refresh of the data held by the
+                    library. This can be especially useful for devices that were asleep when the application was
+                    first run.</p>
+                <a href="/nodes/{{- node.id() -}}/refresh" class="btn btn-primary">Refresh</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Network Update</h5>
+                <p class="card-text">Update the controller with network information from the SUC/SIS. Results of the
+                    RequestNetworkUpdate
+                    Command will be send as a Notification with the Notification type as
+                    Notification::Type_ControllerCommand</p>
+                <a href="/nodes/{{- node.id() -}}/network" class="btn btn-primary">Network</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Neighbor Update</h5>
+                <p class="card-text">Ask a Node to update its Neighbor Tables This command will ask a Node to update
+                    its Neighbor Tables.
+                    Results of the RequestNodeNeighborUpdate Command will be send as a Notification with the
+                    Notification
+                    type as Notification::Type_ControllerCommand</p>
+                <a href="/nodes/{{- node.id() -}}/neighbor" class="btn btn-primary">Neighbor</a>
+            </div>
+        </div>
+
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Remove as Faulty</h5>
+                <p class="card-text">Remove a Failed Device from the Z-Wave Network. This Command will remove a
+                    failed node from the network.
+                    The Node should be on the Controllers Failed Node List, otherwise this command will fail. You
+                    can use
+                    the HasNodeFailed function below to test if the Controller believes the Node has Failed.
+                    The Status of the Node Removal is communicated via Notifications. Specifically, you should
+                    monitor
+                    ControllerCommand Notifications. Results of the RemoveFailedNode Command will be send as a
+                    Notification
+                    with the Notification type as Notification::Type_ControllerCommand</p>
+                <a href="/nodes/{{- node.id() -}}/remove" class="btn btn-danger">Remove as Faulty</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% include 'footer.html' %}

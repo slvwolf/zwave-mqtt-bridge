@@ -1,51 +1,43 @@
-<!--<html>-->
-<!--<body>-->
-<!--{% for node in nodes.values() %}-->
-<!--<h2>Node {{node.id()}} - {{node.name()}}</h2>-->
-<!--<p>{{ node.model() }}</p>-->
-<!--{% for i_k, i_v in node.zw_values().items() %}-->
-<!--<h5>{{ i_v.label }} ({{ i_k }}) = {{ i_v.data }}</h5>-->
-<!--<p>{{ i_v.help }} Type: {{ i_v.type }}</p>-->
-<!--{% endfor %}-->
-<!--{% endfor %}-->
-<!--</body>-->
-<!--</html>-->
-
 {% include 'header.html' %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-            <h2 class="sub-header">Network State: {{ network.state_str }} </h2>
-            ( Ready: {{network.is_ready }} )
-            <h2 class="sub-header">Available Nodes</h2>
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Model</th>
-                        <th>States</th>
-                        <th>Topics</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for node in nodes.values() %}
-                    <tr>
-                        <td>{{node.id()}}</td>
-                        <td><a href="nodes/{{node.name()}}">{{node.name()}}</a></td>
-                        <td>{{ node.model() }}</td>
-                        <td>{% if node.is_failed %} FAILED {% endif %}
-                            {% if node.is_sleeping %} Sleeping {% endif %}
-                            {% if node.is_ready %} Ready {% endif %}
-                        </td>
-                        <td>{{node.registration_state()}}</td>
-                    </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+<div class="row">
+    <div class="col-md-12">
+        <h2 class="sub-header">Network State: {{ network.state_str }} </h2>
+        ( Ready: {{network.is_ready }} )
+    </div>
+    <div class="col-md-12">
+        <h2 class="sub-header">Available Nodes</h2>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Model</th>
+                    <th>States</th>
+                    <th>Topics</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for node in nodes.values() %}
+                <tr>
+                    <td>{{node.id()}}</td>
+                    <td><a href="nodes/{{node.name()}}">{{node.name()}}</a></td>
+                    <td>{{ node.model() }}</td>
+                    <td>{% if node._zwn.is_failed %} FAILED {% endif %}
+                        {% if not node._zwn.is_info_received %} NO_INFO {% endif %}
+                        {% if node._zwn.is_sleeping %} Sleeping {% endif %}
+                    </td>
+                    <td>{{node.registration_state()}}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
+        <p><a href="/network/write_config">Write Config</a></p>
+        <p><a href="/controller/add_node">Add Node</a></p>
+        <p><a href="/controller/remove_node">Remove Node</a></p>
+        <p><a href="/controller/update_config">Update Config</a></p>
+        <p><a href="/network/heal">Heal Network</a></p>
     </div>
 </div>
 {% include 'footer.html' %}
