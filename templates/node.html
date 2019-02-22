@@ -99,10 +99,12 @@
             <table class="table table-striped">
                 <tbody>
                 {% for k, v in node._zwn.stats.items() %}
+                {% if k != "lastReceivedMessage" %}
                 <tr>
                     <td>{{ k }}</td>
                     <td>{{ v }}</td>
                 </tr>
+                {% endif %}
                 {% endfor %}
                 </tbody>
             </table>
