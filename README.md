@@ -2,6 +2,8 @@
 
 _Service for bridging ZWave components to Home Assistant over MQTT._
 
+**This project is no longer maintained**
+
 Note: Project is in prototype state so expect some rough edges
 
 ## Intalling and Running
